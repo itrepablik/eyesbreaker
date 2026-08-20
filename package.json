@@ -3,7 +3,7 @@
   "displayName": "Eyesbreaker",
   "description": "Friendly 20-20-20 rule reminders to prevent digital eye strain. Every 20 minutes, look at something 20 feet away for 20 seconds.",
   "version": "0.1.0",
-  "publisher": "eyesbreaker",
+  "publisher": "INT8Code",
   "icon": "assets/eyesbreaker.png",
   "license": "MIT",
   "repository": {
