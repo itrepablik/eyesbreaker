@@ -1,0 +1,125 @@
+{
+  "name": "eyesbreaker",
+  "displayName": "Eyesbreaker",
+  "description": "Friendly 20-20-20 rule reminders to prevent digital eye strain. Every 20 minutes, look at something 20 feet away for 20 seconds.",
+  "version": "0.1.0",
+  "publisher": "eyesbreaker",
+  "icon": "assets/eyesbreaker.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itrepablik/eyesbreaker"
+  },
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:eyesbreaker.settingsView"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Eyesbreaker",
+      "properties": {
+        "eyesbreaker.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the 20-20-20 eye-break reminders."
+        },
+        "eyesbreaker.intervalMinutes": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 120,
+          "description": "How often (in minutes) Eyesbreaker should remind you to take a break."
+        },
+        "eyesbreaker.breakSeconds": {
+          "type": "number",
+          "default": 20,
+          "minimum": 5,
+          "maximum": 300,
+          "description": "How long the break reminder stays on screen (seconds). The 20-20-20 rule says 20 seconds."
+        },
+        "eyesbreaker.soundEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Play an annoying sound when a break starts. The annoyance is the point - it makes you actually look away."
+        },
+        "eyesbreaker.soundVolume": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Volume of the break sound (0.0 to 1.0)."
+        },
+        "eyesbreaker.soundPattern": {
+          "type": "string",
+          "default": "alarm",
+          "enum": [
+            "alarm",
+            "beep",
+            "siren"
+          ],
+          "description": "The sound pattern used for the break reminder. 'alarm' is a two-tone nag, 'beep' is a fast repetitive beeper, 'siren' sweeps up and down."
+        },
+        "eyesbreaker.snoozeMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "How long to snooze a break when you press the Snooze button."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "eyesbreaker-container",
+          "title": "Eyesbreaker",
+          "icon": "assets/eyesbreaker.png"
+        }
+      ]
+    },
+    "views": {
+      "eyesbreaker-container": [
+        {
+          "type": "webview",
+          "id": "eyesbreaker.settingsView",
+          "name": "Settings",
+          "contextualTitle": "Eyesbreaker Configuration"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "eyesbreaker.openSettings",
+        "title": "Eyesbreaker: Open Settings",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "eyesbreaker.startBreak",
+        "title": "Eyesbreaker: Start Break Now",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "eyesbreaker.toggleEnabled",
+        "title": "Eyesbreaker: Toggle Reminders",
+        "icon": "$(toggle-on)"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.82.0",
+    "typescript": "^5.3.0"
+  }
+}
