@@ -84,3 +84,19 @@ the settings webview.
 ```powershell
 npx @vscode/vsce package
 ```
+
+## Desktop app
+
+A standalone Electron version is available in [`desktop/`](desktop/README.md).
+It runs in the system tray and shows the same 20-second break popup outside
+VS Code.
+
+```powershell
+cd desktop
+npm install
+npm run dist
+```
+
+The installer is written to `desktop/release/`. See
+[`desktop/README.md`](desktop/README.md) for download and installation
+instructions.
