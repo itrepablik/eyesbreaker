@@ -2,6 +2,11 @@
 .vscode-test/**
 src/**
 node_modules/**
+**/node_modules/**
+desktop/**
+plans/**
+**/*.map
+**/*.tsbuildinfo
 .gitignore
 tsconfig.json
-**/*.map
+*.vsix
