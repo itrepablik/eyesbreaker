@@ -3,15 +3,23 @@ import { AnnoyingSoundPlayer } from './sound';
 import { BreakReminderController, BreakEndReason } from './breakReminderPanel';
 import { SettingsWebviewProvider } from './settingsWebviewProvider';
 import { DEFAULT_SETTINGS, clamp, formatDuration, SoundPattern } from './settings';
+import { ScheduleStore } from './scheduleStore';
 
 const CONFIG_NS = 'eyesbreaker';
+
+/**
+ * A persisted schedule this far past its due time (with no active break) is
+ * considered stale from a previous session and is re-established on startup,
+ * so reopening VS Code never pops an overdue break.
+ */
+const STALE_SCHEDULE_GRACE_MS = 15_000;
 
 let statusBarItem: vscode.StatusBarItem | undefined;
 let settingsWebview: SettingsWebviewProvider | undefined;
 let soundPlayer: AnnoyingSoundPlayer | undefined;
 let breakController: BreakReminderController | undefined;
+let scheduleStore: ScheduleStore | undefined;
 let heartbeat: NodeJS.Timeout | undefined;
-let nextBreakAt = 0;
 
 /**
  * Called when the extension is activated. Starts the background heartbeat
@@ -19,6 +27,11 @@ let nextBreakAt = 0;
  */
 export function activate(context: vscode.ExtensionContext): void {
     soundPlayer = new AnnoyingSoundPlayer(context);
+
+    // The schedule store persists the next-break time and the active break
+    // claim to globalStorage, which is shared across every VS Code window.
+    scheduleStore = new ScheduleStore(context.globalStorageUri.fsPath);
+    scheduleStore.init();
 
     settingsWebview = new SettingsWebviewProvider(context.extensionUri, () => buildStatusText());
     breakController = new BreakReminderController(
@@ -51,7 +64,24 @@ export function activate(context: vscode.ExtensionContext): void {
         })
     );
 
-    resetSchedule();
+    // If another window already established a schedule, adopt it (init did).
+    // Otherwise this window creates the shared schedule. A schedule left over
+    // from a previous session that is long past due is treated as stale and
+    // re-established so reopening VS Code resumes a fresh countdown.
+    const enabled = vscode.workspace
+        .getConfiguration(CONFIG_NS)
+        .get<boolean>('enabled', DEFAULT_SETTINGS.enabled);
+    if (enabled) {
+        const nextBreakAt = scheduleStore.getNextBreakAt();
+        const staleFromPreviousSession =
+            nextBreakAt !== 0 &&
+            nextBreakAt < Date.now() - STALE_SCHEDULE_GRACE_MS &&
+            !scheduleStore.getActiveClaim();
+        if (nextBreakAt === 0 || staleFromPreviousSession) {
+            resetSchedule();
+        }
+    }
+
     heartbeat = setInterval(() => heartbeatTick(), 1000);
     context.subscriptions.push({
         dispose: () => {
@@ -73,6 +103,8 @@ export function deactivate(): void {
 
     breakController?.dispose();
     breakController = undefined;
+    scheduleStore?.releaseClaim();
+    scheduleStore = undefined;
     statusBarItem?.dispose();
     statusBarItem = undefined;
     settingsWebview = undefined;
@@ -88,10 +120,20 @@ function heartbeatTick(): void {
         return;
     }
 
+    // Adopt schedule changes made by another VS Code window so every window
+    // shows the same countdown.
+    scheduleStore?.syncFromDisk();
+
     const config = vscode.workspace.getConfiguration(CONFIG_NS);
     const enabled = config.get<boolean>('enabled', DEFAULT_SETTINGS.enabled);
 
-    if (enabled && Date.now() >= nextBreakAt) {
+    // Another window is already showing the break popup; just reflect it.
+    if (scheduleStore?.getActiveClaim()) {
+        updateStatusBar();
+        return;
+    }
+
+    if (enabled && scheduleStore && Date.now() >= scheduleStore.getNextBreakAt()) {
         startBreak();
     }
 
@@ -99,7 +141,12 @@ function heartbeatTick(): void {
 }
 
 function resetSchedule(): void {
-    nextBreakAt = Date.now() + getIntervalMinutes() * 60_000;
+    const config = vscode.workspace.getConfiguration(CONFIG_NS);
+    const enabled = config.get<boolean>('enabled', DEFAULT_SETTINGS.enabled);
+    if (!enabled) {
+        return;
+    }
+    scheduleStore?.setNextBreakAt(Date.now() + getIntervalMinutes() * 60_000);
     updateStatusBar();
 }
 
@@ -109,13 +156,16 @@ function getIntervalMinutes(): number {
 }
 
 function handleBreakEnd(reason: BreakEndReason, snoozeMinutes?: number): void {
+    // Release our ownership of the popup so other windows resume the countdown.
+    scheduleStore?.releaseClaim();
+
     if (reason === 'snoozed') {
         const config = vscode.workspace.getConfiguration(CONFIG_NS);
         const minutes = snoozeMinutes
             ?? clamp(config.get<number>('snoozeMinutes', DEFAULT_SETTINGS.snoozeMinutes), 1, 60);
-        nextBreakAt = Date.now() + minutes * 60_000;
+        scheduleStore?.setNextBreakAt(Date.now() + minutes * 60_000);
     } else {
-        nextBreakAt = Date.now() + getIntervalMinutes() * 60_000;
+        scheduleStore?.setNextBreakAt(Date.now() + getIntervalMinutes() * 60_000);
     }
 
     updateStatusBar();
@@ -131,6 +181,29 @@ function startBreak(): void {
     const snoozeMinutes = Math.round(
         clamp(config.get<number>('snoozeMinutes', DEFAULT_SETTINGS.snoozeMinutes), 1, 60)
     );
+
+    // This window already owns the popup: just (re)start the countdown.
+    if (breakController?.isActive) {
+        breakController.start(breakSeconds, snoozeMinutes);
+        playBreakSound();
+        updateStatusBar();
+        return;
+    }
+
+    const startAt = Date.now();
+    const endAt = startAt + breakSeconds * 1000;
+
+    // Only one window (across all VS Code instances) may show the popup. The
+    // claim is created exclusively, so exactly one window wins.
+    if (!scheduleStore?.claimBreak(startAt, endAt)) {
+        // Another window already owns the active break; just reflect it.
+        updateStatusBar();
+        return;
+    }
+
+    // Pre-arm the post-break schedule so every window stays in sync even if
+    // this window closes mid-break.
+    scheduleStore?.setNextBreakAt(startAt + getIntervalMinutes() * 60_000);
 
     breakController?.start(breakSeconds, snoozeMinutes);
     playBreakSound();
@@ -174,7 +247,17 @@ function updateStatusBar(): void {
         return;
     }
 
-    const remainingMs = Math.max(0, nextBreakAt - Date.now());
+    // A break is active in another VS Code window: mirror it here.
+    const activeClaim = scheduleStore?.getActiveClaim();
+    if (activeClaim) {
+        const remaining = Math.max(0, Math.ceil((activeClaim.endAt - Date.now()) / 1000));
+        statusBarItem.text = `$(eye) Break: ${String(remaining).padStart(2, '0')}s`;
+        statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+        statusBarItem.tooltip = '20-20-20 break in progress (in another window). Look away from your screen!';
+        return;
+    }
+
+    const remainingMs = Math.max(0, (scheduleStore?.getNextBreakAt() ?? Date.now()) - Date.now());
     statusBarItem.text = `$(eye) ${formatDuration(remainingMs)}`;
     statusBarItem.backgroundColor = undefined;
     statusBarItem.tooltip = `Next 20-20-20 break in ${formatDuration(remainingMs)}. Click to open settings.`;
@@ -190,8 +273,11 @@ function buildStatusText(): string {
     if (breakController?.isActive) {
         return 'Break in progress - look away now!';
     }
+    if (scheduleStore?.getActiveClaim()) {
+        return 'Break in progress (in another window) - look away now!';
+    }
 
-    const remainingMs = Math.max(0, nextBreakAt - Date.now());
+    const remainingMs = Math.max(0, (scheduleStore?.getNextBreakAt() ?? Date.now()) - Date.now());
     return `Active - next break in ${formatDuration(remainingMs)}`;
 }
 

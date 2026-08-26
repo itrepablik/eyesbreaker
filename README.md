@@ -27,14 +27,37 @@ Reference: [American Optometric Association — 20-20-20 rule](https://www.aoa.o
 ## How it works
 
 1. On startup, [`activate()`](src/extension.ts) starts a background
-   `setInterval` heartbeat and schedules the first break.
-2. When the timer fires, [`BreakReminderController`](src/breakReminderPanel.ts)
+   `setInterval` heartbeat and establishes the shared schedule.
+2. [`ScheduleStore`](src/scheduleStore.ts) keeps the next-break time in a small
+   file inside the extension's global storage, which is **shared by every VS
+   Code window** on the same machine. Every window reads it and converges on
+   the same countdown, so there is a single source of truth.
+3. When the timer fires, [`BreakReminderController`](src/breakReminderPanel.ts)
    opens a webview panel and starts the 20-second countdown.
-3. [`AnnoyingSoundPlayer`](src/sound.ts) generates a PCM WAV at runtime and
+4. [`AnnoyingSoundPlayer`](src/sound.ts) generates a PCM WAV at runtime and
    plays it via `System.Media.SoundPlayer` (Windows), `afplay` (macOS), or
    `paplay`/`aplay` (Linux).
-4. When the countdown reaches zero, the panel closes and the next break is
+5. When the countdown reaches zero, the panel closes and the next break is
    scheduled automatically.
+
+### Multiple VS Code windows
+
+When several VS Code windows are open, they all share one schedule, so every
+status bar shows the same countdown and breaks fire at the same time:
+
+- The next-break time is stored once in the shared schedule file; any window
+  that changes it (settings change, snooze, or after a break) writes the new
+  value and the other windows pick it up within a second.
+- Only **one** window ever shows the break popup. When a break is due, the
+  windows race to claim it with an OS-level exclusive file
+  (`break.claim.json`); exactly one wins and opens the popup, while the other
+  windows mirror the remaining time in their status bars instead.
+- Closing a window mid-break releases its claim so the remaining windows take
+  over cleanly; a stale claim (e.g. from a crashed window) is reclaimed
+  automatically once the break would have ended.
+- Reopening VS Code resumes the same countdown. A schedule left over from a
+  previous session that is long past due is re-established, so you never get a
+  surprise break popup just for opening the editor.
 
 ## Commands
 
