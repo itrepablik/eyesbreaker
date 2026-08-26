@@ -22,7 +22,24 @@ Reference: [American Optometric Association — 20-20-20 rule](https://www.aoa.o
   inputs, a dropdown, and a volume slider. Everything is saved to VS Code
   settings.
 - **Status bar countdown** — see the time until your next break at a glance.
+- **Synced across windows** — open several VS Code windows? They all share one
+  schedule, so every status bar shows the same countdown and only **one** break
+  popup appears at a time.
 - **Snooze** — postpone a break without disabling reminders permanently.
+
+## ✨ What's new
+
+Open multiple VS Code windows at once? Eyesbreaker now keeps them all in sync:
+
+- **One source of truth** — the next-break time is stored once in shared
+  storage instead of a separate timer per window, so every window counts down
+  to the exact same break.
+- **Only one popup** — when a break fires, a single 20-20-20 panel appears
+  (and the annoying sound plays once). The other windows just mirror the
+  remaining time in their status bars instead of popping their own reminders.
+- **Continuous across sessions** — closing and reopening VS Code resumes the
+  same countdown, and an overdue schedule from a previous session is never
+  fired as a surprise break.
 
 ## How it works
 
