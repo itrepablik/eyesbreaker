@@ -3,7 +3,7 @@ import * as path from 'path';
 import { EyeBreakSettings, clamp, formatDuration } from './settings';
 import { SettingsStore } from './store';
 import { EyeBreakScheduler } from './scheduler';
-import { wavDataUrl } from './sound';
+import { wavDataUrl, completionDataUrl } from './sound';
 import { breakScreenHtml, settingsScreenHtml, settingsUpdateMessage } from './ui';
 
 let tray: Tray | undefined;
@@ -11,6 +11,12 @@ let breakWindow: BrowserWindow | undefined;
 let settingsWindow: BrowserWindow | undefined;
 let pendingBreakStart = false;
 let quitting = false;
+
+/**
+ * How long the break popup stays up after the countdown reaches zero so the
+ * completion chime can be heard before the window closes itself.
+ */
+const COMPLETION_CHIME_MS = 900;
 
 let store: SettingsStore;
 let scheduler: EyeBreakScheduler;
@@ -44,8 +50,13 @@ void app.whenReady().then(() => {
         showBreak();
     });
 
-    scheduler.onBreakEnd(() => {
-        closeBreakWindow();
+    scheduler.onBreakEnd((reason) => {
+        if (reason === 'completed') {
+            // Play the "break over" chime, then close the popup once it is heard.
+            finishBreakWithChime();
+        } else {
+            closeBreakWindow();
+        }
         updateTray();
         sendStateToSettings();
     });
@@ -217,6 +228,32 @@ function closeBreakWindow(): void {
     }
     breakWindow = undefined;
     pendingBreakStart = false;
+}
+
+/**
+ * The countdown reached zero. Send the completion chime to the still-open break
+ * window, then close that window once the chime has had time to play. The
+ * window reference is captured so a break started in the meantime is not closed
+ * by mistake.
+ */
+function finishBreakWithChime(): void {
+    const win = breakWindow;
+    if (!win || win.isDestroyed()) {
+        closeBreakWindow();
+        return;
+    }
+
+    const settings = store.get();
+    const soundDataUrl = settings.soundEnabled
+        ? completionDataUrl(settings.soundVolume)
+        : '';
+
+    win.webContents.send('eyesbreaker:update', { type: 'complete', soundDataUrl });
+    setTimeout(() => {
+        if (breakWindow === win) {
+            closeBreakWindow();
+        }
+    }, COMPLETION_CHIME_MS);
 }
 
 function sendBreakStartIfPending(): void {

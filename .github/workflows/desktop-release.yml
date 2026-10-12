@@ -1,0 +1,74 @@
+name: Desktop Release
+
+# Builds the Eyesbreaker desktop installers for Windows, macOS, and Linux.
+# - Pushing a tag like `desktop-v0.1.0` builds everything and publishes a
+#   GitHub Release with the installers attached as downloadable assets.
+# - You can also run it manually from the Actions tab.
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-latest
+          - ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build installers
+        working-directory: desktop
+        run: npm run dist
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: eyesbreaker-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.exe.blockmap
+            desktop/release/*.dmg
+            desktop/release/*.dmg.blockmap
+            desktop/release/*.AppImage
+            desktop/release/latest*.yml
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Eyesbreaker Desktop ${{ github.ref_name }}
+          generate_release_notes: true
+          files: artifacts/**/*

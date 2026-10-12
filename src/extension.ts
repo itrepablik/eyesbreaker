@@ -168,6 +168,13 @@ function handleBreakEnd(reason: BreakEndReason, snoozeMinutes?: number): void {
         scheduleStore?.setNextBreakAt(Date.now() + getIntervalMinutes() * 60_000);
     }
 
+    // The countdown ran all the way to zero (rather than being dismissed or
+    // snoozed): chime so the user knows the break is over and they can look
+    // back at the screen.
+    if (reason === 'completed') {
+        playCompletionSound();
+    }
+
     updateStatusBar();
 }
 
@@ -220,6 +227,18 @@ function playBreakSound(): void {
     const volume = clamp(config.get<number>('soundVolume', DEFAULT_SETTINGS.soundVolume), 0, 1);
     const pattern = config.get<SoundPattern>('soundPattern', DEFAULT_SETTINGS.soundPattern);
     soundPlayer?.play(pattern, volume);
+}
+
+/** Chime that plays when the break countdown reaches zero. */
+function playCompletionSound(): void {
+    const config = vscode.workspace.getConfiguration(CONFIG_NS);
+
+    if (!config.get<boolean>('soundEnabled', DEFAULT_SETTINGS.soundEnabled)) {
+        return;
+    }
+
+    const volume = clamp(config.get<number>('soundVolume', DEFAULT_SETTINGS.soundVolume), 0, 1);
+    soundPlayer?.playCompletion(volume);
 }
 
 // ---- Status bar ----

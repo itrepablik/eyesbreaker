@@ -40,6 +40,50 @@ export function wavDataUrl(pattern: SoundPattern, volume: number): string {
     return `data:audio/wav;base64,${base64}`;
 }
 
+/**
+ * Build a short, pleasant "countdown finished" chime: two rising sine notes
+ * (C6 then E6) with soft attack/release, deliberately distinct from the harsh
+ * break alarm so the end of a break sounds different from its start.
+ */
+export function generateCompletionWav(volume: number): Uint8Array {
+    const noteSeconds = 0.3;
+    const numSamples = Math.floor(SAMPLE_RATE * noteSeconds * 2);
+    const data = Buffer.alloc(numSamples * 2);
+    const clampedVolume = Math.max(0, Math.min(1, volume));
+    const amplitude = Math.round(32767 * 0.55 * clampedVolume);
+
+    for (let i = 0; i < numSamples; i++) {
+        const t = i / SAMPLE_RATE;
+        const secondNote = t >= noteSeconds;
+        const noteT = secondNote ? t - noteSeconds : t;
+        const frequency = secondNote ? 1318.5 : 1046.5;
+        const tone = Math.sin(2 * Math.PI * frequency * noteT) * noteEnvelope(noteT, noteSeconds);
+        data.writeInt16LE(Math.round(amplitude * tone), i * 2);
+    }
+
+    return new Uint8Array(buildWav(data));
+}
+
+/** Generate the completion chime and return a data URL for <audio> playback. */
+export function completionDataUrl(volume: number): string {
+    const bytes = generateCompletionWav(volume);
+    const base64 = Buffer.from(bytes).toString('base64');
+    return `data:audio/wav;base64,${base64}`;
+}
+
+/** Smooth fade-in/out envelope shared by the completion chime notes. */
+function noteEnvelope(t: number, duration: number): number {
+    const attack = 0.012;
+    const release = 0.12;
+    if (t < attack) {
+        return t / attack;
+    }
+    if (t > duration - release) {
+        return Math.max(0, (duration - t) / release);
+    }
+    return 1;
+}
+
 function square(frequency: number, t: number): number {
     return Math.sin(2 * Math.PI * frequency * t) >= 0 ? 1 : -1;
 }

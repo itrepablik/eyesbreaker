@@ -16,8 +16,7 @@ const SOUND_SECONDS = 3.6;
  */
 export class AnnoyingSoundPlayer {
     private readonly storageDir: string;
-    private cachedPath?: string;
-    private cachedSignature = '';
+    private readonly cache = new Map<string, string>();
 
     constructor(context: vscode.ExtensionContext) {
         this.storageDir = context.globalStorageUri.fsPath;
@@ -25,31 +24,55 @@ export class AnnoyingSoundPlayer {
 
     /** Play the selected annoying sound pattern at the given volume (0..1). */
     play(pattern: SoundPattern, volume: number): void {
+        this.playGenerated(
+            `${pattern}:${volume}`,
+            'eyesbreaker-sound.wav',
+            () => generateWav(pattern, volume),
+            volume
+        );
+    }
+
+    /**
+     * Play a short, pleasant chime that signals the break countdown has
+     * finished, so the user knows they can look back at the screen.
+     */
+    playCompletion(volume: number): void {
+        this.playGenerated(
+            `complete:${volume}`,
+            'eyesbreaker-done.wav',
+            () => generateCompletionWav(volume),
+            volume
+        );
+    }
+
+    /**
+     * Generate (once, then cache) a WAV clip and hand it to the platform
+     * audio player. Guarded against generating/playing at zero volume.
+     */
+    private playGenerated(
+        signature: string,
+        fileName: string,
+        generate: () => Buffer,
+        volume: number
+    ): void {
         if (volume <= 0) {
             return;
         }
 
-        const signature = `${pattern}:${volume}`;
-        if (!this.cachedPath || this.cachedSignature !== signature) {
+        let filePath = this.cache.get(signature);
+        if (!filePath) {
             try {
-                this.cachedPath = this.writeWav(pattern, volume);
-                this.cachedSignature = signature;
+                fs.mkdirSync(this.storageDir, { recursive: true });
+                filePath = path.join(this.storageDir, fileName);
+                fs.writeFileSync(filePath, generate());
+                this.cache.set(signature, filePath);
             } catch (err) {
                 console.error('[eyesbreaker] Failed to generate sound:', err);
                 return;
             }
         }
 
-        if (this.cachedPath) {
-            this.playFile(this.cachedPath);
-        }
-    }
-
-    private writeWav(pattern: SoundPattern, volume: number): string {
-        fs.mkdirSync(this.storageDir, { recursive: true });
-        const filePath = path.join(this.storageDir, 'eyesbreaker-sound.wav');
-        fs.writeFileSync(filePath, generateWav(pattern, volume));
-        return filePath;
+        this.playFile(filePath);
     }
 
     private playFile(filePath: string): void {
@@ -116,6 +139,43 @@ function generateWav(pattern: SoundPattern, volume: number): Buffer {
     }
 
     return buildWav(data);
+}
+
+/**
+ * Build a short, pleasant "countdown finished" chime: two rising sine notes
+ * (C6 then E6) with soft attack/release so it sounds distinctly different from
+ * the harsh break alarm.
+ */
+function generateCompletionWav(volume: number): Buffer {
+    const noteSeconds = 0.3;
+    const numSamples = Math.floor(SAMPLE_RATE * noteSeconds * 2);
+    const data = Buffer.alloc(numSamples * 2);
+    const clampedVolume = Math.max(0, Math.min(1, volume));
+    const amplitude = Math.round(32767 * 0.55 * clampedVolume);
+
+    for (let i = 0; i < numSamples; i++) {
+        const t = i / SAMPLE_RATE;
+        const secondNote = t >= noteSeconds;
+        const noteT = secondNote ? t - noteSeconds : t;
+        const frequency = secondNote ? 1318.5 : 1046.5; // E6 then C6
+        const tone = Math.sin(2 * Math.PI * frequency * noteT) * noteEnvelope(noteT, noteSeconds);
+        data.writeInt16LE(Math.round(amplitude * tone), i * 2);
+    }
+
+    return buildWav(data);
+}
+
+/** Smooth fade-in/out envelope shared by the completion chime notes. */
+function noteEnvelope(t: number, duration: number): number {
+    const attack = 0.012;
+    const release = 0.12;
+    if (t < attack) {
+        return t / attack;
+    }
+    if (t > duration - release) {
+        return Math.max(0, (duration - t) / release);
+    }
+    return 1;
 }
 
 function square(frequency: number, t: number): number {

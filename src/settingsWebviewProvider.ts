@@ -361,7 +361,7 @@ export class SettingsWebviewProvider implements vscode.WebviewViewProvider {
 <div class="field-desc">How long the reminder stays on screen before it disappears. Default is 20 seconds.</div>
 
 <div class="section-title">Sound</div>
-<div class="section-note">The sound is intentionally annoying so you actually look away from the screen.</div>
+<div class="section-note">The start sound is intentionally annoying so you actually look away. When the countdown finishes, a short, gentle chime plays instead to let you know you can look back.</div>
 
 <div class="field">
     <label>Sound</label>
@@ -370,7 +370,7 @@ export class SettingsWebviewProvider implements vscode.WebviewViewProvider {
         <span class="slider"></span>
     </label>
 </div>
-<div class="field-desc">Play a sound when a break starts.</div>
+<div class="field-desc">Play the alarm when a break starts and a short chime when the countdown finishes.</div>
 
 <div class="field">
     <label>Pattern</label>

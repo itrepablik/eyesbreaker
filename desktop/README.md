@@ -7,6 +7,18 @@ A standalone Electron app that applies the 20-20-20 rule outside VS Code:
 It is intentionally self-contained so the VS Code extension in the repository
 root stays untouched.
 
+## Download (for everyone — no build tools needed)
+
+Grab the installer for your OS from the
+[**Releases**](https://github.com/itrepablik/eyesbreaker/releases) page:
+
+- **Windows** — `Eyesbreaker Setup x.y.z.exe`
+- **macOS** — `Eyesbreaker-x.y.z.dmg`
+- **Linux** — `Eyesbreaker-x.y.z.AppImage`
+
+New to this? Follow the beginner-friendly, click-by-click
+[**Installation & User Guide**](INSTALL.md).
+
 ## Features
 
 - **Tray app** — lives in the system tray with a countdown tooltip.
@@ -14,6 +26,9 @@ root stays untouched.
   `intervalMinutes` and counts down from `breakSeconds` before closing itself.
 - **Annoying sound** — a generated WAV plays automatically through the break
   window (Electron autoplay is enabled explicitly).
+- **Break-complete chime** — when the countdown reaches zero, a short, pleasant
+  two-note chime plays and the popup lingers for a moment so you can hear it.
+  It is distinct from the start alarm and honors your sound settings.
 - **Settings window** — the same webview-style form used by the VS Code
   extension: interval, break length, sound pattern, volume, and snooze.
 - **Launch at Login** — toggle from the tray menu.
@@ -48,27 +63,23 @@ cd desktop
 npm run dist
 ```
 
-Installer output goes to `desktop/release/`.
+Installer output goes to `desktop/release/`. To publish those files so others
+can download the app, see [`PUBLISHING.md`](PUBLISHING.md).
 
 ## Install
 
-### Windows
+Step-by-step instructions for Windows, macOS, and Linux — including exactly how
+to get past the "unsigned app" warnings — are in the dedicated
+[**Installation & User Guide**](INSTALL.md). In short:
 
-1. Double-click `Eyesbreaker Setup 0.1.0.exe`.
-2. If Windows SmartScreen shows a warning, click **More info** → **Run anyway**
-   (the build is unsigned).
-3. Launch Eyesbreaker from the Start Menu; it runs in the system tray.
+- **Windows** — run `Eyesbreaker Setup x.y.z.exe`; on the SmartScreen prompt
+  choose **More info → Run anyway**.
+- **macOS** — open the `.dmg`, drag **Eyesbreaker** to Applications, then
+  right-click the app and choose **Open** the first time.
+- **Linux** — `chmod +x Eyesbreaker-x.y.z.AppImage` and run it.
 
-### macOS
-
-1. Open the `.dmg` and drag `Eyesbreaker` into Applications.
-2. On first launch, right-click the app and choose **Open**, then confirm
-   (the build is unsigned).
-
-### Linux
-
-1. Run `chmod +x Eyesbreaker-0.1.0.AppImage`.
-2. Execute it with `./Eyesbreaker-0.1.0.AppImage`.
+After installing, look for the **Eyesbreaker eye icon in your system tray**
+(bottom-right on Windows, the menu bar on macOS).
 
 ## Publisher name and code signing
 

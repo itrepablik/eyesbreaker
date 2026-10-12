@@ -14,6 +14,10 @@ Reference: [American Optometric Association — 20-20-20 rule](https://www.aoa.o
 - **Annoying sound** — when a break starts, Eyesbreaker plays a generated alarm
   through the OS audio player (no webview autoplay restrictions). Choose from
   `alarm`, `beep`, or `siren`.
+- **Break-complete chime** — when the countdown reaches zero, a short, pleasant
+  two-note chime plays so you know the break is over and can look back at your
+  screen. It is deliberately different from the start alarm and honors your
+  sound settings.
 - **20-second countdown popup** — a full webview panel appears with a big
   countdown, a progress bar, and the 20-20-20 instructions. It disappears
   automatically after 20 seconds.
@@ -29,7 +33,24 @@ Reference: [American Optometric Association — 20-20-20 rule](https://www.aoa.o
 
 ## ✨ What's new
 
-Open multiple VS Code windows at once? Eyesbreaker now keeps them all in sync:
+### Break-complete chime
+
+You now get an audible cue when a break *ends*, not just when it starts:
+
+- **Know when it's over** — when the 20-second countdown reaches zero, a short
+  two-note chime (C6 → E6) plays so you know you can look back at your screen.
+  It is intentionally gentle and distinct from the harsh start alarm.
+- **Respects your settings** — the chime uses the same `soundEnabled` and
+  `soundVolume` preferences as the start alarm. Turn sound off and both stay
+  silent; the chime also plays only when the countdown runs to completion, not
+  when you dismiss or snooze a break.
+- **Also on the desktop app** — the standalone Electron app in
+  [`desktop/`](desktop/README.md) plays the same completion chime and keeps the
+  popup up for a moment so you can hear it.
+
+### Multiple VS Code windows
+
+Open multiple VS Code windows at once? Eyesbreaker keeps them all in sync:
 
 - **One source of truth** — the next-break time is stored once in shared
   storage instead of a separate timer per window, so every window counts down
@@ -54,7 +75,8 @@ Open multiple VS Code windows at once? Eyesbreaker now keeps them all in sync:
 4. [`AnnoyingSoundPlayer`](src/sound.ts) generates a PCM WAV at runtime and
    plays it via `System.Media.SoundPlayer` (Windows), `afplay` (macOS), or
    `paplay`/`aplay` (Linux).
-5. When the countdown reaches zero, the panel closes and the next break is
+5. When the countdown reaches zero, [`AnnoyingSoundPlayer.playCompletion()`](src/sound.ts)
+   plays a short completion chime, the panel closes, and the next break is
    scheduled automatically.
 
 ### Multiple VS Code windows
@@ -125,11 +147,29 @@ the settings webview.
 npx @vscode/vsce package
 ```
 
-## Desktop app
+## Desktop app (for users who don't use VS Code)
 
-A standalone Electron version is available in [`desktop/`](desktop/README.md).
-It runs in the system tray and shows the same 20-second break popup outside
-VS Code.
+A standalone Electron version lives in [`desktop/`](desktop/README.md). It runs
+in the system tray and shows the same 20-second break popup — with the same
+start alarm **and** the same break-complete chime — outside VS Code.
+
+### Download and install (no build tools required)
+
+1. Go to the [**Releases**](https://github.com/itrepablik/eyesbreaker/releases)
+   page.
+2. Download the file for your OS from the latest release:
+   - **Windows** — `Eyesbreaker Setup x.y.z.exe`
+   - **macOS** — `Eyesbreaker-x.y.z.dmg`
+   - **Linux** — `Eyesbreaker-x.y.z.AppImage`
+3. Run the installer. Because the builds are **unsigned**, Windows SmartScreen
+   or macOS Gatekeeper will warn you the first time — see
+   [`desktop/INSTALL.md`](desktop/INSTALL.md) for the exact click-by-click steps.
+
+A complete, beginner-friendly walkthrough (first launch, tray controls,
+settings, autostart, uninstall, and troubleshooting) is in
+[`desktop/INSTALL.md`](desktop/INSTALL.md).
+
+### Build from source
 
 ```powershell
 cd desktop
@@ -137,6 +177,6 @@ npm install
 npm run dist
 ```
 
-The installer is written to `desktop/release/`. See
-[`desktop/README.md`](desktop/README.md) for download and installation
-instructions.
+The installer is written to `desktop/release/`. To publish it to GitHub (so
+non-VS Code users can download the `.exe`), see
+[`desktop/PUBLISHING.md`](desktop/PUBLISHING.md).

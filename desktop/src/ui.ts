@@ -112,6 +112,9 @@ bridge.onMessage(function (d) {
         render(d.remaining !== undefined ? d.remaining : total);
     } else if (d.type === 'tick') {
         render(d.remaining);
+    } else if (d.type === 'complete') {
+        render(0);
+        if (d.soundDataUrl) playChime(d.soundDataUrl);
     }
 });
 
@@ -126,6 +129,11 @@ function stopSound() {
         currentAudio.pause();
         currentAudio = null;
     }
+}
+
+function playChime(dataUrl) {
+    const chime = new Audio(dataUrl);
+    chime.play().catch(function () {});
 }
 
 function render(remaining) {
@@ -296,7 +304,7 @@ export function settingsScreenHtml(): string {
 <div class="field-desc">How long the reminder stays on screen before it disappears. Default is 20 seconds.</div>
 
 <div class="section-title">Sound</div>
-<div class="section-note">The sound is intentionally annoying so you actually look away from the screen.</div>
+<div class="section-note">The start sound is intentionally annoying so you actually look away. When the countdown finishes, a short, gentle chime plays instead to let you know you can look back.</div>
 
 <div class="field">
     <label>Sound</label>
@@ -305,7 +313,7 @@ export function settingsScreenHtml(): string {
         <span class="slider"></span>
     </label>
 </div>
-<div class="field-desc">Play a sound when a break starts.</div>
+<div class="field-desc">Play the alarm when a break starts and a short chime when the countdown finishes.</div>
 
 <div class="field">
     <label>Pattern</label>
