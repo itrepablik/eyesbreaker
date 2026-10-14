@@ -32,6 +32,16 @@ You now get an audible cue when a break **ends**, not only when it starts.
   `.exe`), plus an
   [automated release workflow](.github/workflows/desktop-release.yml).
 
+### Fixed
+
+- **Desktop app could survive uninstallation on Windows.** Because it is a
+  tray app, the process kept running until explicitly quit; if you uninstalled
+  while it was running, Windows could not delete `Eyesbreaker.exe` and an
+  orphaned process kept showing break popups (with sound) and could restart at
+  sign-in. The Windows uninstaller now stops the running app and removes any
+  **Launch at Login** entry, and the app enforces a single instance so a
+  relaunch hands off to the running copy instead of starting a second one.
+
 ## [0.1.3] — VS Code extension
 
 - Synced countdown across all open VS Code windows, with a single break popup.

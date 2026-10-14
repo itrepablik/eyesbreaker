@@ -31,7 +31,31 @@ function preloadPath(): string {
     return path.join(__dirname, 'preload.js');
 }
 
+// Only one instance may run. Launching the app again (for example from the
+// Start Menu while it already lives in the tray) focuses the existing instance
+// instead of creating a second tray icon and a second set of timers.
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+    app.quit();
+}
+
+app.on('second-instance', () => {
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+        if (settingsWindow.isMinimized()) {
+            settingsWindow.restore();
+        }
+        settingsWindow.focus();
+    } else {
+        createSettingsWindow();
+    }
+});
+
 void app.whenReady().then(() => {
+    if (!hasSingleInstanceLock) {
+        // Another instance already owns the tray; do not start duplicate timers.
+        return;
+    }
+
     store = new SettingsStore();
     scheduler = new EyeBreakScheduler(store.get());
 

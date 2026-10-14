@@ -41,7 +41,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false
+      "perMachine": false,
+      "include": "build/uninstaller.nsh"
     },
     "mac": {
       "target": "dmg",

@@ -222,8 +222,16 @@ There is no in-app auto-updater; updating is a quick manual download.
 
 ### Windows
 
-1. **Settings → Apps → Installed apps**.
-2. Find **Eyesbreaker**, click the **⋯** menu, then **Uninstall**.
+> ⚠️ **Quit Eyesbreaker from the tray first** (right-click the tray icon →
+> **Quit**). It is a tray app, so it keeps running in the background until you
+> quit it. Newer builds also stop any running copy automatically during
+> uninstallation, but quitting first guarantees a clean removal.
+
+1. **Quit Eyesbreaker** — right-click the tray icon and choose **Quit**.
+2. **Settings → Apps → Installed apps**.
+3. Find **Eyesbreaker**, click the **⋯** menu, then **Uninstall**.
+4. If you had enabled **Launch at Login**, the uninstaller removes that entry
+   automatically.
 
 ### macOS
 
@@ -246,6 +254,20 @@ To also remove your saved settings, delete the user-data folder listed in
 Click the **^** (show hidden icons) arrow on Windows, or check the Windows
 taskbar settings to always show the Eyesbreaker icon. On macOS, check the
 menu bar at the top-right.
+
+**After uninstalling, Eyesbreaker still runs (popups/sound) or appears in Task Manager.**
+This happens if the app was still running when you uninstalled it. A tray app
+keeps its process alive until you quit it, so Windows leaves the `.exe` behind
+and the hidden process keeps working — and it may even restart at sign-in if
+**Launch at Login** was on. Newer builds stop the running app automatically
+during uninstallation. On an older build:
+
+1. Open **Task Manager**, find **Eyesbreaker** (it may appear as an **electron**
+   process), and click **End task**.
+2. Delete the leftover folder, usually
+   `%LOCALAPPDATA%\Programs\Eyesbreaker`.
+3. If it still comes back after signing in, remove the leftover
+   **Eyesbreaker** entry from **Settings → Apps → Startup**.
 
 **The popup appears but I hear no sound.**
 - Open **Settings** and make sure **Sound** is on and **Volume** is above 0%.
