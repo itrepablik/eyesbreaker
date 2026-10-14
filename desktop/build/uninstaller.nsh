@@ -2,6 +2,11 @@
 ;
 ; electron-builder merges this file into the generated installer and uninstaller
 ; (see the "nsis.include" entry in desktop/package.json).
+;
+; Note: electron-builder treats NSIS warnings as errors, and not every
+; electron-builder variable is defined for the uninstaller. This script
+; therefore uses literal names only (no ${...} defines) to avoid
+; "unknown variable/constant" warnings.
 
 !macro customUnInstall
   ; Eyesbreaker is a tray app: it keeps running (main + GPU + renderer
@@ -11,18 +16,17 @@
   ; Login" was enabled, it is started again the next time the user signs in.
   ;
   ; Stop it before the uninstaller removes the files. Electron's helper
-  ; processes share the same executable name, so "/IM <name> /T" covers them
-  ; all, including their child processes.
-  nsExec::ExecToLog 'taskkill /F /IM "${APP_EXECUTABLE_FILENAME}" /T'
+  ; processes share the same executable name, so "/IM Eyesbreaker.exe /T"
+  ; covers them all, including their child processes.
+  nsExec::ExecToLog 'taskkill /F /IM "Eyesbreaker.exe" /T'
   Pop $0
   Sleep 500
 
   ; Remove any "Launch at Login" entry the app registered so it cannot be
-  ; started again after it has been uninstalled. Both the packaged product name
-  ; and the npm package name are covered, since Electron derives the registry
-  ; value from the app name.
-  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_PRODUCT_FILENAME}"
-  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_EXECUTABLE_FILENAME}"
+  ; started again after it has been uninstalled. Electron derives the registry
+  ; value name from the app name, so both the packaged product name
+  ; ("Eyesbreaker") and the npm package name ("eyesbreaker-desktop") are
+  ; covered.
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Eyesbreaker"
   DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "eyesbreaker-desktop"
 !macroend
